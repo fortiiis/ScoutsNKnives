@@ -8,7 +8,7 @@
 
 	<ItemGroup>
 		<Reference Include="CounterStrikeSharp.API">
-			<HintPath>S:\cs2 server\game\csgo\addons\counterstrikesharp\api\CounterStrikeSharp.API.dll</HintPath>
+			<HintPath>../dllinclude</HintPath>
 		</Reference>
 	</ItemGroup>
 

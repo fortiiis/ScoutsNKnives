@@ -10,7 +10,7 @@ namespace ScoutsNKnives
     [MinimumApiVersion(53)]
     public class ScoutsNKnives : BasePlugin
     {
-        public override string ModuleName => "Scouts N' Knives [Alpha]";
+        public override string ModuleName => "Scouts N' Knives";
         public override string ModuleVersion => "0.0.1";
         public override string ModuleAuthor => "Fortis";
         public override string ModuleDescription => "Simple Scouts N' Knives Plugin";
@@ -23,7 +23,7 @@ namespace ScoutsNKnives
 
             if (!_configs!.Enabled)
             {
-                Server.PrintToConsole("[SNK] Is not enabled");
+                Console.WriteLine("[SnK] Is Not Enabled");
                 return;
             }
 
@@ -32,14 +32,42 @@ namespace ScoutsNKnives
             RegisterEventHandler<EventItemPurchase>(OnItemPurchased, HookMode.Post);
             RegisterEventHandler<EventGameStart>(OnGameStart, HookMode.Post);
             RegisterEventHandler<EventPlayerHurt>(OnPlayerHurtPre, HookMode.Pre);
+            RegisterEventHandler<EventRoundStart>(OnRoundStart);
+        }
+
+        private HookResult OnRoundStart(EventRoundStart @event, GameEventInfo info)
+        {
+            int autohop = _configs!.AutoHop ? 1 : 0;
+            Server.ExecuteCommand("sv_maxvelocity 10000");
+            Server.ExecuteCommand($"sv_autobunnyhopping {autohop}");
+            Server.ExecuteCommand("sv_staminajumpcost 0");
+            Server.ExecuteCommand("sv_staminalandcost 0");
+            Server.ExecuteCommand("sv_staminamax 0");
+            Server.ExecuteCommand("sv_staminarecoveryrate 0");
+            Server.ExecuteCommand("sv_airaccelerate 7");
+            Server.ExecuteCommand("sv_clamp_unsafe_velocities 0");
+            Server.ExecuteCommand($"sv_gravity {_configs!.Gravity}");
+            Server.ExecuteCommand("mp_weapons_max_gun_purchases_per_weapon_per_match -1");
+            Server.ExecuteCommand($"mp_roundtime {_configs!.RoundTime}");
+            return HookResult.Continue;
         }
 
         private HookResult OnGameStart(EventGameStart @event, GameEventInfo info)
         {
             if (!_configs!.Enabled) return HookResult.Continue;
 
+            int autohop = _configs!.AutoHop ? 1 : 0;
+            ConVar.Find("sv_maxvelocity")?.SetValue(10000);
+            ConVar.Find("sv_autobunnyhopping")?.SetValue(autohop);
+            ConVar.Find("sv_staminajumpcost")?.SetValue(0);
+            ConVar.Find("sv_staminalandcost")?.SetValue(0);
+            ConVar.Find("sv_staminamax")?.SetValue(0);
+            ConVar.Find("sv_staminarecoveryrate")?.SetValue(0);
+            ConVar.Find("sv_airaccelerate")?.SetValue(7);
+            ConVar.Find("sv_clamp_unsafe_velocities")?.SetValue(0);
+            ConVar.Find("sv_gravity")?.SetValue(_configs!.Gravity);
             ConVar.Find("mp_weapons_max_gun_purchases_per_weapon_per_match")?.SetValue(-1);
-            ConVar.Find("mp_gravity")?.SetValue(_configs!.Gravity);
+            ConVar.Find("mp_roundtime")?.SetValue(_configs!.RoundTime);
             return HookResult.Continue;
         }
 
@@ -70,10 +98,12 @@ namespace ScoutsNKnives
 
             if (@event.Defindex == WeaponData.AllowedWeapons.First().DefIndex) return HookResult.Continue;
 
-            var weapon = WeaponData.BlockedWeapons.First(x => x.DefIndex == @event.Defindex);
+            if (@event.Item == "knife") return HookResult.Continue;
+
+            var weapon = WeaponData.BlockedWeapons.FirstOrDefault(x => x.DefIndex == @event.Defindex);
 
             SetupPlayer(player);
-            player.PrintToChat($"{ChatColors.Red}[SnK] {ChatColors.White}Weapon {ChatColors.Purple}{weapon.Name} {ChatColors.White} is not allowed");
+            player.PrintToChat($" {ChatColors.Red}[SnK] {ChatColors.White}Weapon {ChatColors.Purple}{weapon!.Name} {ChatColors.White} is not allowed");
             return HookResult.Continue;
         }
 
@@ -87,7 +117,7 @@ namespace ScoutsNKnives
             if (player.Connected != PlayerConnectedState.PlayerConnected) return HookResult.Continue;
 
             SetupPlayer(player);
-            player.PrintToChat($"{ChatColors.Red}[SnK] {ChatColors.White}Purchasing weapons is disabled");
+            player.PrintToChat($" {ChatColors.Red}[SnK] {ChatColors.White}Purchasing weapons is disabled");
             return HookResult.Continue;
         }
 
@@ -148,10 +178,12 @@ namespace ScoutsNKnives
             return new ConfigOptions
             {
                 Enabled = true,
+                AutoHop = true,
                 Armor = 100,
                 Knife_Damage = 1.0,
                 Scout_Damage = 1.0,
                 Gravity = 450,
+                RoundTime = 10,
                 Speed = (float)1.0,
             };
         }
@@ -159,10 +191,12 @@ namespace ScoutsNKnives
         public class ConfigOptions
         {
             public bool Enabled { get; init; }
+            public bool AutoHop { get; init; }
             public int Armor { get; init; }
             public double Knife_Damage { get; init; }
             public double Scout_Damage { get; init; }
             public int Gravity { get; init; }
+            public int RoundTime { get; init; }
             public float Speed { get; init; }
         }
     }
